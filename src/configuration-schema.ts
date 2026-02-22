@@ -210,7 +210,7 @@ export const uiSchema: UiSchema = {
   includeyear: {
     "ui:help": "Split by year and show year of celebration",
   },
-  // --- NEW UI HELP TEXT ADDED HERE ---
+
   splitbyyearreverse: {
     "ui:help": "Show longest tenure (highest years) first",
   },
