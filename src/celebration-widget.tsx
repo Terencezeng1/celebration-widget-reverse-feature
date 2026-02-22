@@ -42,7 +42,7 @@ export interface CelebrationWidgetProps extends BlockAttributes {
   additionalfieldsdisplayed: string;
   optoutgroupid: string;
   includeyear: boolean;
-  splitbyyearreverse: boolean; // ADDED: New feature property
+  splitbyyearreverse: boolean;
   daysbeforetitle: string;
   daysaftertitle: string;
   groupid: string;
@@ -74,7 +74,7 @@ export const CelebrationWidget = ({
   showdaysbefore,
   showdaysafter,
   splitbyyear,
-  splitbyyearreverse, // ADDED: Destructured for use
+  splitbyyearreverse,
   specialyears,
   hideyearheader,
   linktochat,
@@ -91,7 +91,6 @@ export const CelebrationWidget = ({
   optoutfield,
   optoutvalue,
 }: CelebrationWidgetProps): ReactElement => {
-  // FIX: Robust Date Comparison Logic using fixed regex [./ -]
   const compareDates = (dateOne: string, dateTwo: string, format = "DD.MM") => {
     const arrA = dateOne.split(/[./ -]+/);
     const arrB = dateTwo.split(/[./ -]+/);
@@ -122,7 +121,6 @@ export const CelebrationWidget = ({
     };
   };
 
-  // FIX: Robust date conversion for local preview
   const convertDate = (date: string, format = "DD.MM") => {
     const dateArray = date.split(/[./ -]+/).filter((item) => item.length <= 2);
     const dateVal = new Date(
@@ -312,7 +310,6 @@ export const CelebrationWidget = ({
   let htmlList = [];
   if (filteredUsers.length > 0) {
     if (includeyear === "true" || includeyear === true) {
-      // FIX: Smart Year Search for "Split by Year" calculation using fixed regex
       usersByGroupCondition = filteredUsers.reduce((arr: {}, user: any) => {
         const profileDate = user.profile[anniversaryprofilefieldid];
         const dateParts = profileDate.split(/[./ -]+/);
@@ -364,7 +361,6 @@ export const CelebrationWidget = ({
       }, {});
     }
 
-    // --- REVERSE SORT GATE ---
     let groupKeys = Object.keys(usersByGroupCondition);
     if (
       (includeyear === "true" || includeyear === true) &&

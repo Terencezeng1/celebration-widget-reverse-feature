@@ -211,7 +211,8 @@ export const uiSchema: UiSchema = {
   },
 
   splitbyyearreverse: {
-    "ui:help": "Show longest tenure (highest years) first",
+    "ui:help":
+      "Show longest tenure (highest years) first, requires activating split by year alongside",
   },
   numbertoshow: {
     "ui: help":
