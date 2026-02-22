@@ -42,7 +42,7 @@ export interface CelebrationWidgetProps extends BlockAttributes {
   additionalfieldsdisplayed: string;
   optoutgroupid: string;
   includeyear: boolean;
-  splitbyyearreverse: any; // NEW FEATURE PROP
+  splitbyyearreverse: boolean; // ADDED: Matches schema property name
   daysbeforetitle: string;
   daysaftertitle: string;
   groupid: string;
@@ -91,14 +91,17 @@ export const CelebrationWidget = ({
   optoutfield,
   optoutvalue,
 }: CelebrationWidgetProps): ReactElement => {
-  // Base logic from your working "Improvements" build
+  // FIX: Robust Date Comparison Logic using fixed regex [./ -]
   const compareDates = (dateOne: string, dateTwo: string, format = "DD.MM") => {
     const arrA = dateOne.split(/[./ -]+/);
     const arrB = dateTwo.split(/[./ -]+/);
+
     const yearIndexA = arrA.findIndex((p) => p.length === 4);
     const yearIndexB = arrB.findIndex((p) => p.length === 4);
+
     const cleanA = arrA.filter((_, i) => i !== yearIndexA);
     const cleanB = arrB.filter((_, i) => i !== yearIndexB);
+
     const dateA = new Date(
       0,
       parseInt(format === "DD.MM" ? cleanA[1] : cleanA[0]) - 1,
@@ -109,6 +112,7 @@ export const CelebrationWidget = ({
       parseInt(format === "DD.MM" ? cleanB[1] : cleanB[0]) - 1,
       parseInt(format === "DD.MM" ? cleanB[0] : cleanB[1]),
     );
+
     return {
       sameDate: dateA.getTime() === dateB.getTime(),
       sameMonth: dateA.getMonth() === dateB.getMonth(),
@@ -118,6 +122,7 @@ export const CelebrationWidget = ({
     };
   };
 
+  // FIX: Robust date conversion for local preview
   const convertDate = (date: string, format = "DD.MM") => {
     const dateArray = date.split(/[./ -]+/).filter((item) => item.length <= 2);
     const dateVal = new Date(
@@ -196,6 +201,7 @@ export const CelebrationWidget = ({
 
   const [usersList, setUsers] = React.useState([{}]);
   const [usersAreLoaded, setLoaded] = React.useState(Boolean);
+  const [networkID, setNID] = React.useState(String);
 
   React.useEffect(() => {
     setLoaded(false);
@@ -218,7 +224,7 @@ export const CelebrationWidget = ({
       }
     };
     getAllUsers(1000, 0, []).catch(console.error);
-  }, [networkid]);
+  }, [networkID]);
 
   const filteredUsers = usersList.filter((user) => {
     if (
@@ -229,7 +235,16 @@ export const CelebrationWidget = ({
     const profileDate = user.profile[anniversaryprofilefieldid];
     if (profileDate == "" || profileDate == null) return false;
 
+    const profileParts = profileDate.split(/[./ -]+/);
+    const profileYear = profileParts.find((p) => p.length === 4);
+    const currentYearStr = dateNow.split(/[./ -]+/).find((p) => p.length === 4);
+    if (profileYear && currentYearStr && profileYear === currentYearStr)
+      return false;
+
     const dateComparison = compareDates(profileDate, dateNow, dateformat);
+    if (showwholemonth === "true")
+      return dateComparison.sameMonth && daysSinceBeginningOfMonth >= 0;
+
     return (
       dateComparison.sameDate ||
       (dateComparison.daysDiff >= -showdaysbefore &&
@@ -248,14 +263,22 @@ export const CelebrationWidget = ({
 
   let htmlList = [];
   if (filteredUsers.length > 0) {
-    if (includeyear === "true" || includeyear === true) {
+    if (includeyear === "true") {
       usersByGroupCondition = filteredUsers.reduce((arr: {}, user: any) => {
         const profileDate = user.profile[anniversaryprofilefieldid];
         const dateParts = profileDate.split(/[./ -]+/);
         const hireYearString = dateParts.find((p) => p.length === 4);
         const hireYear = hireYearString ? parseInt(hireYearString) : null;
         if (hireYear) {
-          const yearCount = new Date().getFullYear() - hireYear;
+          const currentYear = new Date().getFullYear();
+          let yearCount = currentYear - hireYear;
+          const currentMonthPart = parseInt(
+            dateNow.split(/[./ -]+/).filter((p) => p.length <= 2)[1],
+          );
+          yearCount =
+            yearCount > 120
+              ? yearCount - (currentMonthPart - 1) * 100
+              : yearCount;
           arr[yearCount] = arr[yearCount] || [];
           arr[yearCount].push(user);
         }
@@ -279,14 +302,18 @@ export const CelebrationWidget = ({
       }, {});
     }
 
-    // --- REVERSE SORT GATE ---
+    // --- NEW: THE REVERSE SORT GATE ---
+    // We extract keys and sort them ONLY if the toggle is boolean true or string 'true'
     let groupKeys = Object.keys(usersByGroupCondition);
-    if (splitbyyearreverse === true || splitbyyearreverse === "true") {
-      groupKeys.sort((a, b) => parseInt(b) - parseInt(a));
+    if (
+      (includeyear === "true" || includeyear === true) &&
+      (splitbyyearreverse === true || splitbyyearreverse === "true")
+    ) {
+      groupKeys.sort((a, b) => parseInt(b) - parseInt(a)); // Longest tenure first
+    } else if (includeyear === "true" || includeyear === true) {
+      groupKeys.sort((a, b) => parseInt(a) - parseInt(b)); // Shortest tenure first
     } else {
-      groupKeys.sort((a, b) =>
-        isNaN(parseInt(a)) ? a.localeCompare(b) : parseInt(a) - parseInt(b),
-      );
+      groupKeys.sort(); // 0-previous, 1-today, 2-upcoming
     }
 
     for (const groupCondition of groupKeys) {
@@ -294,7 +321,6 @@ export const CelebrationWidget = ({
       if (limit !== undefined) if (anniversariesCount >= limit) break;
       if (
         (includeyear === "true" ||
-          includeyear === true ||
           daysaftertitle !== undefined ||
           daysbeforetitle !== undefined) &&
         hideyearheader === "false"
@@ -332,9 +358,14 @@ export const CelebrationWidget = ({
               className="cw-entries"
               style={divstyles.container}
             >
-              <a href={userLink} className="link-internal ally-focus-within">
+              <a
+                key={theUser.id + "a"}
+                href={userLink}
+                className="link-internal ally-focus-within"
+              >
                 {hasAvatar ? (
                   <img
+                    key={theUser.id + "img"}
                     data-type="thumb"
                     data-size="35"
                     style={imgstyles.container}
@@ -348,7 +379,12 @@ export const CelebrationWidget = ({
                     alt={theUser.firstName + " " + theUser.lastName}
                   ></img>
                 ) : (
-                  <span style={spanstyles.container}>
+                  <span
+                    key={theUser.id + "span"}
+                    data-type="thumb"
+                    data-size="35"
+                    style={spanstyles.container}
+                  >
                     {theUser.firstName.substr(0, 1) +
                       theUser.lastName.substr(0, 1)}
                   </span>
