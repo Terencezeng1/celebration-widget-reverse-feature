@@ -76,7 +76,6 @@ export const configurationSchema: JSONSchema7 = {
       type: "boolean",
       title: "Split by Year",
     },
-    // --- NEW PROPERTY ADDED HERE ---
     splitbyyearreverse: {
       type: "boolean",
       title: "Split by Year Reverse",

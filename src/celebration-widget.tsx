@@ -1,6 +1,22 @@
+/*!
+ * Copyright 2020, Staffbase GmbH and contributors.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import React, { ReactElement } from "react";
 import { BlockAttributes } from "widget-sdk";
 
+/**
+ * React Component
+ */
 export interface CelebrationWidgetProps extends BlockAttributes {
   anniversaryprofilefieldid: string;
   dateformat: string;
@@ -14,15 +30,22 @@ export interface CelebrationWidgetProps extends BlockAttributes {
   showdate: boolean;
   hideemptywidget: boolean;
   showwholemonth: boolean;
+  showwholemonthforxdays: number;
   showdaysbefore: number;
   showdaysafter: number;
   specialyears: string;
   hideyearheader: boolean;
+  linktochat: boolean;
+  limit: number;
+  imageurl: string;
   headercolor: string;
+  additionalfieldsdisplayed: string;
+  optoutgroupid: string;
   includeyear: boolean;
-  splitbyyearreverse: boolean; // Confirmed Boolean Property
+  splitbyyearreverse: any; // NEW FEATURE PROP
   daysbeforetitle: string;
   daysaftertitle: string;
+  groupid: string;
   networkid: string;
   numbertoshow: number;
   fieldfilter: string;
@@ -31,40 +54,44 @@ export interface CelebrationWidgetProps extends BlockAttributes {
   optoutvalue: string;
 }
 
-export const CelebrationWidget = (
-  props: CelebrationWidgetProps,
-): ReactElement => {
-  const {
-    dateformat,
-    anniversaryprofilefieldid,
-    includepending,
-    numbertoshow,
-    loadingmessage,
-    noinstancesmessage,
-    title,
-    todaytitle,
-    yearword,
-    yearwordplural,
-    showdate,
-    hideemptywidget,
-    showwholemonth,
-    showdaysbefore,
-    showdaysafter,
-    specialyears,
-    hideyearheader,
-    headercolor,
-    includeyear,
-    splitbyyearreverse,
-    daysbeforetitle,
-    daysaftertitle,
-    networkid,
-    fieldfilter,
-    fieldvalue,
-    optoutfield,
-    optoutvalue,
-  } = props;
-
-  // USE YOUR WORKING DATE LOGIC (From Improvements build)
+export const CelebrationWidget = ({
+  dateformat,
+  anniversaryprofilefieldid,
+  includepending,
+  numbertoshow,
+  loadingmessage,
+  noinstancesmessage,
+  title,
+  todaytitle,
+  yearword,
+  yearwordplural,
+  showdate,
+  hideemptywidget,
+  showwholemonth,
+  groupid,
+  showwholemonthforxdays,
+  imageurl,
+  showdaysbefore,
+  showdaysafter,
+  splitbyyear,
+  splitbyyearreverse,
+  specialyears,
+  hideyearheader,
+  linktochat,
+  limit,
+  headercolor,
+  additionalfieldsdisplayed,
+  optoutgroupid,
+  includeyear,
+  daysbeforetitle,
+  daysaftertitle,
+  networkid,
+  fieldfilter,
+  fieldvalue,
+  optoutfield,
+  optoutvalue,
+}: CelebrationWidgetProps): ReactElement => {
+  // Base logic from your working "Improvements" build
   const compareDates = (dateOne: string, dateTwo: string, format = "DD.MM") => {
     const arrA = dateOne.split(/[./ -]+/);
     const arrB = dateTwo.split(/[./ -]+/);
@@ -104,15 +131,78 @@ export const CelebrationWidget = (
     });
   };
 
-  const [usersList, setUsers] = React.useState([]);
-  const [usersAreLoaded, setLoaded] = React.useState(false);
+  let usersByGroupCondition = {},
+    anniversariesCount = 0;
+
+  const dateNow = new Date().toLocaleDateString(
+      dateformat == "DD.MM" ? "de-DE" : "en-US",
+      { year: "numeric", month: "2-digit", day: "2-digit" },
+    ),
+    daysSinceBeginningOfMonth = compareDates(
+      dateNow,
+      dateformat == "DD.MM"
+        ? "01" + dateNow.substring(2)
+        : dateNow.substring(0, 3) + "01",
+      dateformat,
+    ).daysDiff;
+
+  const h2styles: { [key: string]: React.CSSProperties } = {
+    container: { color: "#" + (headercolor ? headercolor : "000000") },
+  };
+  const divstyles: { [key: string]: React.CSSProperties } = {
+    container: {
+      borderRadius: "10px",
+      border: "1px solid #D3D3D3",
+      padding: "8px",
+      margin: "10px 0px",
+    },
+  };
+  const pstyles: { [key: string]: React.CSSProperties } = {
+    container: { display: "inline-block", marginTop: "0", color: "#000000" },
+  };
+  const hrstyles: { [key: string]: React.CSSProperties } = {
+    container: { margin: "0" },
+  };
+  const namestyles: { [key: string]: React.CSSProperties } = {
+    container: { fontSize: "16px" },
+  };
+  const datestyles: { [key: string]: React.CSSProperties } = {
+    container: { fontSize: "12px" },
+  };
+  const imgstyles: { [key: string]: React.CSSProperties } = {
+    container: {
+      width: "55px",
+      height: "55px",
+      verticalAlign: "top",
+      borderRadius: "5px",
+      marginInlineEnd: "15px",
+    },
+  };
+  const spanstyles: { [key: string]: React.CSSProperties } = {
+    container: {
+      width: "55px",
+      height: "55px",
+      backgroundColor: we.authMgr.getBranch().colors.backgroundColor,
+      fontSize: "26px",
+      lineHeight: "55px",
+      color: we.authMgr.getBranch().colors.textColor,
+      textAlign: "center",
+      verticalAlign: "top",
+      borderRadius: "5px",
+      marginRight: "15px",
+      display: "inline-block",
+    },
+  };
+
+  const [usersList, setUsers] = React.useState([{}]);
+  const [usersAreLoaded, setLoaded] = React.useState(Boolean);
 
   React.useEffect(() => {
     setLoaded(false);
     const getAllUsers = async (
       limit: number,
       offset: number,
-      users: Array<any>,
+      users: Array<Object>,
     ) => {
       const loadedUsers = await we.api.getUsers({
         status: "activated",
@@ -128,18 +218,17 @@ export const CelebrationWidget = (
       }
     };
     getAllUsers(1000, 0, []).catch(console.error);
-    // LISTEN TO PROPS: This ensures the toggle re-triggers the user load if needed
-  }, [networkid, anniversaryprofilefieldid]);
+  }, [networkid]);
 
-  const dateNow = new Date().toLocaleDateString(
-    dateformat === "DD.MM" ? "de-DE" : "en-US",
-    { year: "numeric", month: "2-digit", day: "2-digit" },
-  );
-
-  // RESTORED: Your working filtering logic
   const filteredUsers = usersList.filter((user) => {
-    if (!user.profile || !user.profile[anniversaryprofilefieldid]) return false;
+    if (
+      !user.profile ||
+      typeof user.profile[anniversaryprofilefieldid] === "undefined"
+    )
+      return false;
     const profileDate = user.profile[anniversaryprofilefieldid];
+    if (profileDate == "" || profileDate == null) return false;
+
     const dateComparison = compareDates(profileDate, dateNow, dateformat);
     return (
       dateComparison.sameDate ||
@@ -149,140 +238,165 @@ export const CelebrationWidget = (
     );
   });
 
-  filteredUsers.sort(
-    (a, b) =>
-      compareDates(
-        a.profile[anniversaryprofilefieldid],
-        b.profile[anniversaryprofilefieldid],
-        dateformat,
-      ).daysDiff,
-  );
-
-  let usersByGroupCondition = {};
-  if (includeyear === true || includeyear === "true") {
-    usersByGroupCondition = filteredUsers.reduce((arr: any, user: any) => {
-      const parts = user.profile[anniversaryprofilefieldid].split(/[./ -]+/);
-      const hireYearString = parts.find((p) => p.length === 4);
-      if (hireYearString) {
-        const yearCount = new Date().getFullYear() - parseInt(hireYearString);
-        arr[yearCount] = arr[yearCount] || [];
-        arr[yearCount].push(user);
-      }
-      return arr;
-    }, {});
-  } else {
-    usersByGroupCondition = filteredUsers.reduce((arr: any, user: any) => {
-      const comp = compareDates(
-        user.profile[anniversaryprofilefieldid],
-        dateNow,
-        dateformat,
-      );
-      const group = comp.sameDate
-        ? "1-today"
-        : comp.daysDiff < 0
-          ? "0-previous"
-          : "2-upcoming";
-      arr[group] = arr[group] || [];
-      arr[group].push(user);
-      return arr;
-    }, {});
-  }
-
-  // REVERSE FEATURE: Listen to boolean true OR string 'true'
-  let groupKeys = Object.keys(usersByGroupCondition);
-  const isReverse =
-    splitbyyearreverse === true || splitbyyearreverse === "true";
-
-  if (isReverse) {
-    groupKeys.sort((a, b) => parseInt(b) - parseInt(a)); // Descending
-  } else {
-    groupKeys.sort((a, b) =>
-      isNaN(parseInt(a)) ? a.localeCompare(b) : parseInt(a) - parseInt(b),
-    ); // Ascending
-  }
-
-  const htmlList = groupKeys.map((key) => {
-    const users = usersByGroupCondition[key];
-    const titleText =
-      key === "1-today"
-        ? todaytitle
-        : key === "2-upcoming"
-          ? daysaftertitle
-          : key === "0-previous"
-            ? daysbeforetitle
-            : `${key} ${parseInt(key) > 1 ? yearwordplural : yearword}`;
-
-    return (
-      <div key={key}>
-        {hideyearheader !== true && hideyearheader !== "true" && (
-          <h2 style={{ color: `#${headercolor || "000"}` }}>{titleText}</h2>
-        )}
-        {users.map((u: any) => (
-          <div
-            key={u.id}
-            style={{
-              border: "1px solid #ddd",
-              margin: "5px 0",
-              padding: "10px",
-              borderRadius: "8px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  backgroundColor: "#eee",
-                  borderRadius: "50%",
-                  marginRight: "10px",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                {u.avatar?.thumb ? (
-                  <img
-                    src={u.avatar.thumb.url}
-                    style={{ width: "100%", borderRadius: "50%" }}
-                  />
-                ) : (
-                  u.firstName[0]
-                )}
-              </div>
-              <div>
-                <strong>
-                  {u.firstName} {u.lastName}
-                </strong>
-                <br />
-                {showdate && (
-                  <small>
-                    {convertDate(
-                      u.profile[anniversaryprofilefieldid],
-                      dateformat,
-                    )}
-                  </small>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  filteredUsers.sort((userA, userB) => {
+    return compareDates(
+      userA.profile[anniversaryprofilefieldid],
+      userB.profile[anniversaryprofilefieldid],
+      dateformat,
+    ).daysDiff;
   });
+
+  let htmlList = [];
+  if (filteredUsers.length > 0) {
+    if (includeyear === "true" || includeyear === true) {
+      usersByGroupCondition = filteredUsers.reduce((arr: {}, user: any) => {
+        const profileDate = user.profile[anniversaryprofilefieldid];
+        const dateParts = profileDate.split(/[./ -]+/);
+        const hireYearString = dateParts.find((p) => p.length === 4);
+        const hireYear = hireYearString ? parseInt(hireYearString) : null;
+        if (hireYear) {
+          const yearCount = new Date().getFullYear() - hireYear;
+          arr[yearCount] = arr[yearCount] || [];
+          arr[yearCount].push(user);
+        }
+        return arr;
+      }, {});
+    } else {
+      usersByGroupCondition = filteredUsers.reduce((arr, user) => {
+        const comp = compareDates(
+            user.profile[anniversaryprofilefieldid],
+            dateNow,
+            dateformat,
+          ),
+          dateGroup = comp.sameDate
+            ? "1-today"
+            : comp.daysDiff < 0
+              ? "0-previous"
+              : "2-upcoming";
+        arr[dateGroup] = arr[dateGroup] || [];
+        arr[dateGroup].push(user);
+        return arr;
+      }, {});
+    }
+
+    // --- REVERSE SORT GATE ---
+    let groupKeys = Object.keys(usersByGroupCondition);
+    if (splitbyyearreverse === true || splitbyyearreverse === "true") {
+      groupKeys.sort((a, b) => parseInt(b) - parseInt(a));
+    } else {
+      groupKeys.sort((a, b) =>
+        isNaN(parseInt(a)) ? a.localeCompare(b) : parseInt(a) - parseInt(b),
+      );
+    }
+
+    for (const groupCondition of groupKeys) {
+      const usersGroup = usersByGroupCondition[groupCondition];
+      if (limit !== undefined) if (anniversariesCount >= limit) break;
+      if (
+        (includeyear === "true" ||
+          includeyear === true ||
+          daysaftertitle !== undefined ||
+          daysbeforetitle !== undefined) &&
+        hideyearheader === "false"
+      ) {
+        htmlList.push(
+          <h2
+            key={groupCondition}
+            style={hrstyles.container}
+            className="cw-group-condition-title"
+          >
+            {groupCondition === "1-today"
+              ? todaytitle
+              : groupCondition === "2-upcoming"
+                ? daysaftertitle
+                : groupCondition === "0-previous"
+                  ? daysbeforetitle
+                  : groupCondition +
+                    " " +
+                    (parseInt(groupCondition) > 1 ? yearwordplural : yearword)}
+          </h2>,
+        );
+      }
+      htmlList.push(
+        usersGroup.map((theUser) => {
+          const hasAvatar =
+              typeof theUser.avatar !== "undefined" || imageurl !== undefined,
+            userLink =
+              we.authMgr.getBranchConfig().whitelabelConfig.frontendURL +
+              "/profile/" +
+              theUser.id;
+          return (
+            <div
+              key={theUser.id + "divInner"}
+              id={theUser.id}
+              className="cw-entries"
+              style={divstyles.container}
+            >
+              <a href={userLink} className="link-internal ally-focus-within">
+                {hasAvatar ? (
+                  <img
+                    data-type="thumb"
+                    data-size="35"
+                    style={imgstyles.container}
+                    src={
+                      theUser.avatar
+                        ? theUser.avatar.thumb
+                          ? theUser.avatar.thumb.url
+                          : imageurl
+                        : imageurl
+                    }
+                    alt={theUser.firstName + " " + theUser.lastName}
+                  ></img>
+                ) : (
+                  <span style={spanstyles.container}>
+                    {theUser.firstName.substr(0, 1) +
+                      theUser.lastName.substr(0, 1)}
+                  </span>
+                )}
+                <div style={pstyles.container}>
+                  <div style={namestyles.container}>
+                    {theUser.firstName} {theUser.lastName}
+                  </div>
+                  <hr style={hrstyles.container}></hr>
+                  <span style={datestyles.container}>
+                    {showdate === "true"
+                      ? theUser.profile
+                        ? convertDate(
+                            theUser.profile[anniversaryprofilefieldid],
+                            dateformat,
+                          )
+                        : ""
+                      : ""}
+                  </span>
+                </div>
+              </a>
+            </div>
+          );
+        }),
+      );
+      anniversariesCount = anniversariesCount + usersGroup.length;
+    }
+  } else if (!usersAreLoaded) {
+    htmlList.push(<p key="cw-loading">{loadingmessage}</p>);
+  } else {
+    htmlList.push(<p key="cw-noinstances">{noinstancesmessage}</p>);
+  }
 
   return (
     <div
+      id={"cw-" + anniversaryprofilefieldid}
       style={{
-        height: numbertoshow ? `${numbertoshow}px` : "auto",
+        height: numbertoshow ? numbertoshow + "px" : "auto",
         overflow: "auto",
-        padding: "10px",
+        padding: "3px",
       }}
     >
-      <h1 style={{ color: `#${headercolor || "000"}` }}>{title}</h1>
-      {usersAreLoaded ? htmlList : <p>{loadingmessage}</p>}
-      {usersAreLoaded && filteredUsers.length === 0 && (
-        <p>{noinstancesmessage}</p>
-      )}
+      <h1 id="cw-title" style={h2styles.container}>
+        {title}
+      </h1>
+      <div id="cw-list-container" key="userList">
+        {htmlList}
+      </div>
     </div>
   );
 };
