@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,46 +14,55 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-import { BlockFactory, BlockDefinition, ExternalBlockDefinition, BaseBlock } from "widget-sdk";
-import { CelebrationWidgetProps, CelebrationWidget } from "./celebration-widget";
+import {
+  BlockFactory,
+  BlockDefinition,
+  ExternalBlockDefinition,
+  BaseBlock,
+} from "widget-sdk";
+import {
+  CelebrationWidgetProps,
+  CelebrationWidget,
+} from "./celebration-widget";
 import { configurationSchema, uiSchema } from "./configuration-schema";
-import pkg from '../package.json'
+import pkg from "../package.json";
 
 /**
  * Define which attributes are handled by the widget. This should be also reflected in configuration schema
  */
 const widgetAttributes: string[] = [
-  'anniversaryprofilefieldid',
-  'dateformat',
-  'includepending',
-  'loadingmessage',
-  'noinstancesmessage',
-  'title',
-  'todaytitle',
-  'yearword',
-  'yearwordplural',
-  'showdate',
-  'hideemptywidget',
-  'showwholemonth',
-  'showwholemonthforxdays',
-  'showdaysbefore',
-  'showdaysafter',
-  'specialyears',
-  'hideyearheader',
-  'imageurl',
-  'linktochat',
-  'limit',
-  'headercolor',
-  'additionalfieldsdisplayed',
-  'includeyear',
-  'daysbeforetitle',
-  'daysaftertitle',
-  'networkid',
-  'numbertoshow',
-  'fieldfilter',
-  'fieldvalue',
-  'optoutfield',
-  'optoutvalue'
+  "anniversaryprofilefieldid",
+  "dateformat",
+  "includepending",
+  "loadingmessage",
+  "noinstancesmessage",
+  "title",
+  "todaytitle",
+  "yearword",
+  "yearwordplural",
+  "showdate",
+  "hideemptywidget",
+  "showwholemonth",
+  "showwholemonthforxdays",
+  "showdaysbefore",
+  "showdaysafter",
+  "specialyears",
+  "hideyearheader",
+  "imageurl",
+  "linktochat",
+  "limit",
+  "headercolor",
+  "additionalfieldsdisplayed",
+  "includeyear",
+  "splitbyyearreverse", // ADDED: Critical for saving state
+  "daysbeforetitle",
+  "daysaftertitle",
+  "networkid",
+  "numbertoshow",
+  "fieldfilter",
+  "fieldvalue",
+  "optoutfield",
+  "optoutvalue",
 ];
 
 /**
@@ -62,9 +71,12 @@ const widgetAttributes: string[] = [
  */
 const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
   /**
-   *  <celebration-widget message="world!"></celebration-widget>
+   * <celebration-widget message="world!"></celebration-widget>
    */
-  return class CelebrationWidgetBlock extends BaseBlockClass implements BaseBlock {
+  return class CelebrationWidgetBlock
+    extends BaseBlockClass
+    implements BaseBlock
+  {
     public constructor() {
       super();
     }
@@ -92,7 +104,9 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
      * Callback invoked on every change of an observed attribute. Call the parental method before
      * applying own logic.
      */
-    public attributeChangedCallback(...args: [string, string | undefined, string | undefined]): void {
+    public attributeChangedCallback(
+      ...args: [string, string | undefined, string | undefined]
+    ): void {
       super.attributeChangedCallback.apply(this, args);
     }
   };
@@ -102,14 +116,15 @@ const factory: BlockFactory = (BaseBlockClass, _widgetApi) => {
  * The definition of the block, to let it successful register to the hosting application
  */
 const blockDefinition: BlockDefinition = {
-    name: "celebration-widget-two",
-    factory: factory,
-    attributes: widgetAttributes,
-    blockLevel: 'block',
-    configurationSchema: configurationSchema,
-    uiSchema: uiSchema,
-    label: 'Celebration Widget 2',
-    iconUrl: 'https://cc-scripts.staffbase.com/celebration-widget/celebration.png'
+  name: "celebration-widget-two",
+  factory: factory,
+  attributes: widgetAttributes,
+  blockLevel: "block",
+  configurationSchema: configurationSchema,
+  uiSchema: uiSchema,
+  label: "Celebration Widget 2",
+  iconUrl:
+    "https://cc-scripts.staffbase.com/celebration-widget/celebration.png",
 };
 
 /**
@@ -118,7 +133,7 @@ const blockDefinition: BlockDefinition = {
 const externalBlockDefinition: ExternalBlockDefinition = {
   blockDefinition,
   author: pkg.author,
-  version: pkg.version
+  version: pkg.version,
 };
 
 /**
