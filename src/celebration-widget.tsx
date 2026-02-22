@@ -42,7 +42,7 @@ export interface CelebrationWidgetProps extends BlockAttributes {
   additionalfieldsdisplayed: string;
   optoutgroupid: string;
   includeyear: boolean;
-  splitbyyearreverse: boolean; // ADDED: Minimal addition for new feature
+  splitbyyearreverse: boolean; // ADDED: New feature property
   daysbeforetitle: string;
   daysaftertitle: string;
   groupid: string;
@@ -74,7 +74,7 @@ export const CelebrationWidget = ({
   showdaysbefore,
   showdaysafter,
   splitbyyear,
-  splitbyyearreverse,
+  splitbyyearreverse, // ADDED: Destructured for use
   specialyears,
   hideyearheader,
   linktochat,
@@ -91,29 +91,26 @@ export const CelebrationWidget = ({
   optoutfield,
   optoutvalue,
 }: CelebrationWidgetProps): ReactElement => {
-  const compareDates = (
-    dateOne: string,
-    dateTwo: string,
-    dateformat = "DD.MM",
-  ) => {
-    //Allow for single digit value & filter for YYYY values by removing array items longer then 2 chars
-    const dateAarray = dateOne
-      .split(/[./-]+/)
-      .filter((item) => item.length <= 2);
-    const dateBarray = dateTwo
-      .split(/[./-]+/)
-      .filter((item) => item.length <= 2);
+  // FIX: Robust Date Comparison Logic using fixed regex [./ -]
+  const compareDates = (dateOne: string, dateTwo: string, format = "DD.MM") => {
+    const arrA = dateOne.split(/[./ -]+/);
+    const arrB = dateTwo.split(/[./ -]+/);
 
-    // If the widget is in anniversary mode, the year is taken into consideration when comparing, otherwise only the month and date are compared.
+    const yearIndexA = arrA.findIndex((p) => p.length === 4);
+    const yearIndexB = arrB.findIndex((p) => p.length === 4);
+
+    const cleanA = arrA.filter((_, i) => i !== yearIndexA);
+    const cleanB = arrB.filter((_, i) => i !== yearIndexB);
+
     const dateA = new Date(
       0,
-      parseInt(dateformat === "DD.MM" ? dateAarray[1] : dateAarray[0]) - 1,
-      parseInt(dateformat === "DD.MM" ? dateAarray[0] : dateAarray[1]),
+      parseInt(format === "DD.MM" ? cleanA[1] : cleanA[0]) - 1,
+      parseInt(format === "DD.MM" ? cleanA[0] : cleanA[1]),
     );
     const dateB = new Date(
       0,
-      parseInt(dateformat === "DD.MM" ? dateBarray[1] : dateBarray[0]) - 1,
-      parseInt(dateformat === "DD.MM" ? dateBarray[0] : dateBarray[1]),
+      parseInt(format === "DD.MM" ? cleanB[1] : cleanB[0]) - 1,
+      parseInt(format === "DD.MM" ? cleanB[0] : cleanB[1]),
     );
 
     return {
@@ -125,22 +122,23 @@ export const CelebrationWidget = ({
     };
   };
 
-  const convertDate = (date: string, dateformat = "DD.MM") => {
-    const dateArray = date.split(/[./-]+/).filter((item) => item.length <= 2);
-
+  // FIX: Robust date conversion for local preview
+  const convertDate = (date: string, format = "DD.MM") => {
+    const dateArray = date.split(/[./ -]+/).filter((item) => item.length <= 2);
     const dateVal = new Date(
       0,
-      parseInt(dateformat === "DD.MM" ? dateArray[1] : dateArray[0]) - 1,
-      parseInt(dateformat === "DD.MM" ? dateArray[0] : dateArray[1]),
+      parseInt(format === "DD.MM" ? dateArray[1] : dateArray[0]) - 1,
+      parseInt(format === "DD.MM" ? dateArray[0] : dateArray[1]),
     );
-    return dateVal.toLocaleString(
-      dateformat === "DD.MM" ? "default" : "en-US",
-      { month: "long", day: "numeric" },
-    );
+    return dateVal.toLocaleString(format === "DD.MM" ? "default" : "en-US", {
+      month: "long",
+      day: "numeric",
+    });
   };
 
   let usersByGroupCondition = {},
     anniversariesCount = 0;
+
   const dateNow = new Date().toLocaleDateString(
       dateformat == "DD.MM" ? "de-DE" : "en-US",
       { year: "numeric", month: "2-digit", day: "2-digit" },
@@ -209,7 +207,6 @@ export const CelebrationWidget = ({
 
   React.useEffect(() => {
     setLoaded(false);
-
     if (includepending === "true") {
       const getNetworkUsers = async (
         limit: number,
@@ -281,25 +278,21 @@ export const CelebrationWidget = ({
         return false;
     }
 
-    if (
-      user.profile[anniversaryprofilefieldid] == "" ||
-      user.profile[anniversaryprofilefieldid] == null
-    )
+    const profileDate = user.profile[anniversaryprofilefieldid];
+    if (profileDate == "" || profileDate == null) return false;
+
+    // FIX: Format-Agnostic Hire Year identification with fixed regex
+    const profileParts = profileDate.split(/[./ -]+/);
+    const profileYear = profileParts.find((p) => p.length === 4);
+    const currentYearStr = dateNow.split(/[./ -]+/).find((p) => p.length === 4);
+
+    if (profileYear && currentYearStr && profileYear === currentYearStr)
       return false;
-    const dateComparison = compareDates(
-      user.profile[anniversaryprofilefieldid],
-      dateNow,
-      dateformat,
-    );
+
+    const dateComparison = compareDates(profileDate, dateNow, dateformat);
     if (showwholemonth === "true")
       return dateComparison.sameMonth && daysSinceBeginningOfMonth >= 0;
-    if (user.profile[anniversaryprofilefieldid].split(/[./]+/)[2]) {
-      if (
-        user.profile[anniversaryprofilefieldid].split(/[./]+/)[2] ===
-        dateNow.split(/[./]+/)[2]
-      )
-        return false;
-    }
+
     return (
       dateComparison.sameDate ||
       (dateComparison.daysDiff >= -showdaysbefore &&
@@ -319,16 +312,28 @@ export const CelebrationWidget = ({
   let htmlList = [];
   if (filteredUsers.length > 0) {
     if (includeyear === "true" || includeyear === true) {
+      // FIX: Smart Year Search for "Split by Year" calculation using fixed regex
       usersByGroupCondition = filteredUsers.reduce((arr: {}, user: any) => {
-        let yearCount =
-          parseInt(dateNow.substr(6, 4)) -
-          parseInt(user.profile[anniversaryprofilefieldid].split(/[./]+/)[2]);
-        yearCount =
-          yearCount > 120
-            ? yearCount - (parseInt(dateNow.substr(6, 2)) - 1) * 100
-            : yearCount;
-        arr[yearCount] = arr[yearCount] || [];
-        arr[yearCount].push(user);
+        const profileDate = user.profile[anniversaryprofilefieldid];
+        const dateParts = profileDate.split(/[./ -]+/);
+        const hireYearString = dateParts.find((p) => p.length === 4);
+        const hireYear = hireYearString ? parseInt(hireYearString) : null;
+
+        if (hireYear) {
+          const currentYear = new Date().getFullYear();
+          let yearCount = currentYear - hireYear;
+
+          const currentMonthPart = parseInt(
+            dateNow.split(/[./ -]+/).filter((p) => p.length <= 2)[1],
+          );
+          yearCount =
+            yearCount > 120
+              ? yearCount - (currentMonthPart - 1) * 100
+              : yearCount;
+
+          arr[yearCount] = arr[yearCount] || [];
+          arr[yearCount].push(user);
+        }
         return arr;
       }, {});
 
@@ -342,7 +347,7 @@ export const CelebrationWidget = ({
           }, {});
       }
     } else {
-      usersByGroupCondition = filteredUsers.reduce((arr: any, user: any) => {
+      usersByGroupCondition = filteredUsers.reduce((arr, user) => {
         const dateComparison = compareDates(
             user.profile[anniversaryprofilefieldid],
             dateNow,
@@ -359,7 +364,7 @@ export const CelebrationWidget = ({
       }, {});
     }
 
-    // --- REVERSE SORT ADDITION: MODIFIED LOOP START ---
+    // --- REVERSE SORT GATE ---
     let groupKeys = Object.keys(usersByGroupCondition);
     if (
       (includeyear === "true" || includeyear === true) &&
@@ -374,7 +379,7 @@ export const CelebrationWidget = ({
 
     for (const groupCondition of groupKeys) {
       const usersGroup = usersByGroupCondition[groupCondition];
-      if (limit !== undefined) if (anniversariesCount >= limit) return;
+      if (limit !== undefined) if (anniversariesCount >= limit) break;
       if (
         (includeyear === "true" ||
           includeyear === true ||
